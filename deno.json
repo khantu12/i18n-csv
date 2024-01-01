@@ -1,5 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "compile:ctj": "deno compile -o csv-to-json/out -A csv-to-json/main.ts",
+    "compile:jtc": "deno compile -o json-to-csv/out -A json-to-csv/main.ts"
   }
 }

@@ -1,0 +1,5 @@
+csv-to-json/out
+json-to-csv/out
+
+*.csv
+translations/

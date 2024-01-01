@@ -119,6 +119,8 @@ const createCsv = async (translationsPath: string, csvPath: string) => {
   }, "");
 
   Deno.writeTextFileSync(csvPath, text);
+
+  console.log("Successfully created CSV from translation files!")
 };
 
 createCsv(translationFolder, csvFile);

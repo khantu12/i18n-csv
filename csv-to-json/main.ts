@@ -1,6 +1,8 @@
 import { parse } from "https://deno.land/std@0.82.0/encoding/csv.ts";
 import { Handlebars } from "https://deno.land/x/handlebars/mod.ts";
 
+const __dirname = new URL('.', import.meta.url).pathname;
+
 function camelCase(str: string) {
   return str.replace(/(?:^\w|[A-Z]|\b\w)/g, function (word, index) {
     return index == 0 ? word.toLowerCase() : word.toUpperCase();
@@ -41,13 +43,12 @@ if (!Deno.args.length) {
   );
   Deno.exit(1);
 } else if (Deno.args.length === 1) {
-  console.error(
-    "Please provide a path to the translation folder.",
+  console.log(
+    "INFO: Since no translation folder was provided, the default folder 'translations' will be used.",
   );
-  Deno.exit(1);
 }
 
-const [fileName, translationFolder] = Deno.args;
+const [fileName, translationFolder = 'translations'] = Deno.args;
 
 const csvFile = Deno.readTextFileSync(fileName);
 
@@ -85,14 +86,14 @@ const createIndexFile = async (
   language: string,
   namespaces: string[],
 ) => {
-  const data = await handle.render("index.hbs", { namespaces, language });
+  const data = await handle.render(`${__dirname}/index.hbs`, { namespaces, language });
   await Deno.writeTextFile(`${translationFolder}/${language}/index.ts`, data);
 };
 
 const createConfigFile = async (
   languages: string[],
 ) => {
-  const data = await handle.render("config.hbs", { languages });
+  const data = await handle.render(`${__dirname}/config.hbs`, { languages });
   await Deno.writeTextFile(`${translationFolder}/config.ts`, data);
 };
 
@@ -123,6 +124,8 @@ const createTranslationFolders = async (
   });
 
   createConfigFile(Object.entries(translations).map(([language]) => language));
+
+  console.log("Successfully created translation files!");
 };
 
 const csvTranslations = createTranslations(csvData);
