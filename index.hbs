@@ -1,0 +1,9 @@
+{{#each namespaces}}
+import {{camelCase this}} from './{{this}}.json';
+{{/each}}
+
+export const {{language}} = {
+  {{#each namespaces}}
+  {{camelCase this}},
+  {{/each}}
+} as const;
