@@ -1,12 +1,10 @@
 if (!Deno.args.length) {
   console.error(
-    "Please provide a path to the translation folder and csv file.",
+    "Please provide a path to the translation folder and csv file."
   );
   Deno.exit(1);
 } else if (Deno.args.length === 1) {
-  console.error(
-    "Please provide a path to the csv file.",
-  );
+  console.error("Please provide a path to the csv file.");
   Deno.exit(1);
 }
 
@@ -52,32 +50,30 @@ function* iterator(data: any, key?: string): any {
   }
 }
 
-const createCsv = async (translationsPath: string, csvPath: string) => {
+const createCsv = (translationsPath: string, csvPath: string) => {
   const csvData = [["key"]];
 
-  const languages = (await getLanguageFoldersNames(translationsPath)).reduce(
+  const languages = getLanguageFoldersNames(translationsPath).reduce(
     (acc, curr) => {
       if (curr === "en") acc.unshift(curr);
       else acc.push(curr);
       return acc;
     },
-    [] as string[],
+    [] as string[]
   );
 
   for (let i = 0; i < languages.length; i++) {
     const language = languages[i];
 
-    const LANGUAGE_COLUMN = i + 1;
+    const languageColumn = i + 1;
 
-    csvData[HEADER_ROW][LANGUAGE_COLUMN] = language;
+    csvData[HEADER_ROW][languageColumn] = language;
 
-    const jsonFilesNames = await getJsonFilesNames(
-      `${translationsPath}/${language}`,
-    );
+    const jsonFilesNames = getJsonFilesNames(`${translationsPath}/${language}`);
 
     jsonFilesNames.forEach((fileName) => {
       const json = Deno.readTextFileSync(
-        `${translationsPath}/${language}/${fileName}`,
+        `${translationsPath}/${language}/${fileName}`
       );
 
       const jsonData = JSON.parse(json);
@@ -92,35 +88,45 @@ const createCsv = async (translationsPath: string, csvPath: string) => {
 
         const key = `${fileName.split(".").at(0)}.${k}`;
 
-        const KEY_ROW = csvData.findIndex((row) => row[KEY_COLUMN] === key);
-        const hasKeyRow = KEY_ROW !== -1;
+        const keyRow = csvData.findIndex((row) => row[KEY_COLUMN] === key);
+        const hasKeyRow = keyRow !== -1;
 
         if (!hasKeyRow) {
           csvData.push([]);
           csvData[csvData.length - 1][KEY_COLUMN] = key;
-          csvData[csvData.length - 1][LANGUAGE_COLUMN] = v;
+          csvData[csvData.length - 1][languageColumn] = sanitizeCSVColumn(v);
         } else {
-          csvData[KEY_ROW][LANGUAGE_COLUMN] = v;
+          csvData[keyRow][languageColumn] = sanitizeCSVColumn(v);
         }
       }
     });
   }
 
-  const text = csvData.reduce((acc, curr) => {
-    const row = curr.map((c) => {
-      let newC = c;
-      if (newC.includes(`"`)) newC = newC.replaceAll(`"`, `"""`);
-      return `"${newC}"`;
-    }).join(",").concat("\n");
-
+  const text = fillMissingColumns(csvData).reduce((acc, curr) => {
+    const row = curr.join(",").concat("\n");
     acc += row;
-
     return acc;
   }, "");
 
   Deno.writeTextFileSync(csvPath, text);
 
-  console.log("Successfully created CSV from translation files!")
+  console.log("Successfully created CSV from translation files!");
 };
+
+function fillMissingColumns(csvData: string[][]) {
+  const nrColumns = csvData[0].length;
+  for (const row of csvData) {
+    if (nrColumns !== row.length) {
+      row.push('');
+      row.push('');
+    }
+  }
+  return csvData;
+}
+
+function sanitizeCSVColumn(value: string) {
+  if (value.includes(`"`)) value = value.replaceAll(`"`, `"""`);
+  return `"${value}"`;
+}
 
 createCsv(translationFolder, csvFile);
