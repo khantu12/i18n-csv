@@ -71,7 +71,9 @@ const handleRow = (obj: any, row: any) => {
   const { key, ...translations } = row;
 
   Object.entries(translations).forEach(([language, value]) => {
-    set(obj, `${language}.${key}`, value);
+    if (value) {
+      set(obj, `${language}.${key}`, value);
+    }
   });
 
   return obj;

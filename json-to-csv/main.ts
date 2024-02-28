@@ -102,8 +102,13 @@ const createCsv = (translationsPath: string, csvPath: string) => {
     });
   }
 
-  const text = fillMissingColumns(csvData).reduce((acc, curr) => {
-    const row = curr.join(",").concat("\n");
+  const text = csvData.reduce((acc, curr) => {
+    let row = curr.join(",");
+    if (csvData[0].length !== curr.length) {
+      row = row.concat(',,');
+    }
+    row = row.concat('\n');
+
     acc += row;
     return acc;
   }, "");
@@ -112,17 +117,6 @@ const createCsv = (translationsPath: string, csvPath: string) => {
 
   console.log("Successfully created CSV from translation files!");
 };
-
-function fillMissingColumns(csvData: string[][]) {
-  const nrColumns = csvData[0].length;
-  for (const row of csvData) {
-    if (nrColumns !== row.length) {
-      row.push('');
-      row.push('');
-    }
-  }
-  return csvData;
-}
 
 function sanitizeCSVColumn(value: string) {
   if (value.includes(`"`)) value = value.replaceAll(`"`, `"""`);
