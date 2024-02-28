@@ -122,10 +122,15 @@ const createTranslationFolders = async (
       );
     });
 
+    namespaces.sort();
+
     createIndexFile(translationFolder, language, namespaces);
   });
 
-  createConfigFile(Object.entries(translations).map(([language]) => language));
+  const languages = Object.entries(translations).map(([language]) => language);
+  languages.sort();
+
+  createConfigFile(languages);
 
   console.log("Successfully created translation files!");
 };
