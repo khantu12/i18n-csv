@@ -55,7 +55,7 @@ const csvFile = Deno.readTextFileSync(fileName);
 const csvData = await parse(csvFile, { skipFirstRow: true });
 
 const set = (obj: any, path: string, value: any) => {
-  const keys = path.split(".");
+  const keys = path.split(/\.(?=[a-zA-Z])/g);
   const lastKey = keys.pop();
 
   keys.reduce((acc, key) => {
