@@ -94,22 +94,17 @@ const createCsv = (translationsPath: string, csvPath: string) => {
         if (!hasKeyRow) {
           csvData.push([]);
           csvData[csvData.length - 1][KEY_COLUMN] = key;
-          csvData[csvData.length - 1][languageColumn] = sanitizeCSVColumn(v);
+          csvData[csvData.length - 1][languageColumn] = v;
         } else {
-          csvData[keyRow][languageColumn] = sanitizeCSVColumn(v);
+          csvData[keyRow][languageColumn] = v;
         }
       }
     });
   }
 
-  const text = csvData.reduce((acc, curr) => {
-    let row = curr.join(",");
-    if (csvData[0].length !== curr.length) {
-      row = row.concat(',,');
-    }
-    row = row.concat('\n');
-
-    acc += row;
+  const text = fillEmptyCells(csvData).reduce((acc, row) => {
+    const str = sanitizeRow(row).join(",").concat("\n");
+    acc += str;
     return acc;
   }, "");
 
@@ -118,7 +113,24 @@ const createCsv = (translationsPath: string, csvPath: string) => {
   console.log("Successfully created CSV from translation files!");
 };
 
-function sanitizeCSVColumn(value: string) {
+function fillEmptyCells(csvData: string[][]) {
+  return csvData.map((row) => {
+    const length = csvData[0].length;
+    if (row.length < length) {
+      const diff = length - row.length;
+      for (let i = 0; i < diff; i++) {
+        row.push("");
+      }
+    }
+    return row;
+  });
+}
+
+function sanitizeRow(row: string[]) {
+  return row.map(sanitizeCell);
+}
+
+function sanitizeCell(value: string) {
   if (value.includes(`"`)) value = value.replaceAll(`"`, `"""`);
   return `"${value}"`;
 }
