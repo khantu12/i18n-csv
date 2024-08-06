@@ -9,7 +9,7 @@ function camelCase(str: string) {
   }).replace(/\s+|[-]/g, "");
 }
 
-const handle = new Handlebars({
+const handlebars = new Handlebars({
   baseDir: "",
   compilerOptions: {},
   defaultLayout: "",
@@ -21,7 +21,7 @@ const handle = new Handlebars({
   },
 });
 
-const exists = async (filename: string): Promise<boolean> => {
+const existsFile = async (filename: string): Promise<boolean> => {
   try {
     await Deno.stat(filename);
     // successful, file or directory must exist
@@ -49,31 +49,26 @@ if (!Deno.args.length) {
 }
 
 const [fileName, translationFolder = 'translations'] = Deno.args;
-
 const csvFile = Deno.readTextFileSync(fileName);
-
 const csvData = await parse(csvFile, { skipFirstRow: true });
 
 const set = (obj: any, path: string, value: any) => {
   const keys = path.split(/\.(?=[a-zA-Z0-9])/g);
-  const lastKey = keys.pop();
+  const lastKey = keys.pop() as string;
 
+  // Alter "obj". Create nested objects if they don't exist and set value.
   keys.reduce((acc, key) => {
-    if (!acc[key]) {
-      acc[key] = {};
-    }
-
+    if (!acc[key]) acc[key] = {};
     return acc[key];
-  }, obj)[lastKey as string] = value;
+  }, obj)[lastKey] = value; 
 };
 
 const handleRow = (obj: any, row: any) => {
   const { key, ...translations } = row;
 
   Object.entries(translations).forEach(([language, value]) => {
-    if (value) {
+    if (value) 
       set(obj, `${language}.${key}`, value);
-    }
   });
 
   return obj;
@@ -88,14 +83,14 @@ const createIndexFile = async (
   language: string,
   namespaces: string[],
 ) => {
-  const data = await handle.render(`${__dirname}/index.hbs`, { namespaces, language });
+  const data = await handlebars.render(`${__dirname}/index.hbs`, { namespaces, language });
   await Deno.writeTextFile(`${translationFolder}/${language}/index.ts`, data);
 };
 
 const createConfigFile = async (
   languages: string[],
 ) => {
-  const data = await handle.render(`${__dirname}/config.hbs`, { languages });
+  const data = await handlebars.render(`${__dirname}/config.hbs`, { languages });
   await Deno.writeTextFile(`${translationFolder}/config.ts`, data);
 };
 
@@ -103,16 +98,21 @@ const createTranslationFolders = async (
   translations: any,
   translationFolder: string,
 ) => {
-  if (await exists(translationFolder)) {
+  if (await existsFile(translationFolder)) {
     Deno.removeSync(translationFolder, { recursive: true });
   }
+
+  const languages: string[] = [];
 
   Deno.mkdirSync(translationFolder);
   Object.entries(translations).forEach(([language, data]) => {
     Deno.mkdirSync(`${translationFolder}/${language}`);
 
+    languages.push(language);
+
     const namespaces: string[] = [];
 
+    // Create translation files for each namespace
     Object.entries(data as any).forEach(([namespace, data]) => {
       namespaces.push(namespace);
 
@@ -124,16 +124,16 @@ const createTranslationFolders = async (
 
     namespaces.sort();
 
+    // Create index file
     createIndexFile(translationFolder, language, namespaces);
   });
 
-  const languages = Object.entries(translations).map(([language]) => language);
   languages.sort();
 
+  // Create config file
   createConfigFile(languages);
 
   console.log("Successfully created translation files!");
 };
 
-const csvTranslations = createTranslations(csvData);
-createTranslationFolders(csvTranslations, translationFolder);
+createTranslationFolders(createTranslations(csvData), translationFolder);

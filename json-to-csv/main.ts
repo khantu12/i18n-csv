@@ -20,14 +20,14 @@ const getLanguageFoldersNames = (path: string) => {
   return languages;
 };
 
-const getJsonFilesNames = (path: string) => {
-  const jsonFiles = [];
+const getJsonFileNames = (path: string) => {
+  const fileNames = [];
   for (const dirEntry of Deno.readDirSync(path)) {
     if (dirEntry.name.endsWith(".json")) {
-      jsonFiles.push(dirEntry.name);
+      fileNames.push(dirEntry.name);
     }
   }
-  return jsonFiles;
+  return fileNames;
 };
 
 const HEADER_ROW = 0;
@@ -40,9 +40,9 @@ const dotContact = (str1: string | undefined, str2: string | undefined) => {
   return arr.join(".");
 };
 
-function* iterator(data: any, key?: string): any {
-  for (let [k, v] of Object.entries(data)) {
-    if (typeof v !== "string") {
+function* iterator(data: object, key?: string): Generator<[string, string], any, undefined> {
+  for (const [k, v] of Object.entries(data)) {
+    if (v instanceof Object) {
       yield* iterator(v, dotContact(key, k));
     } else {
       yield [dotContact(key, k), v];
@@ -69,34 +69,28 @@ const createCsv = (translationsPath: string, csvPath: string) => {
 
     csvData[HEADER_ROW][languageColumn] = language;
 
-    const jsonFilesNames = getJsonFilesNames(`${translationsPath}/${language}`);
-
-    jsonFilesNames.forEach((fileName) => {
+    getJsonFileNames(`${translationsPath}/${language}`).forEach((fileName) => {
       const json = Deno.readTextFileSync(
         `${translationsPath}/${language}/${fileName}`
       );
 
-      const jsonData = JSON.parse(json);
-
-      const it = iterator(jsonData);
-
+      const it = iterator(JSON.parse(json));
       while (true) {
-        const { value, done } = it.next();
-        if (done) break;
+        const step = it.next();
+        if (step.done) break;
 
-        const [k, v] = value;
+        const [key, value] = step.value;
+        const namespace = fileName.split(".")[0];
+        const translationKey = `${namespace}.${key}`;
+        const row = csvData.findIndex((row) => row[KEY_COLUMN] === translationKey);
 
-        const key = `${fileName.split(".").at(0)}.${k}`;
-
-        const keyRow = csvData.findIndex((row) => row[KEY_COLUMN] === key);
-        const hasKeyRow = keyRow !== -1;
-
-        if (!hasKeyRow) {
-          csvData.push([]);
-          csvData[csvData.length - 1][KEY_COLUMN] = key;
-          csvData[csvData.length - 1][languageColumn] = v;
+        if (row > -1) {
+          csvData[row][languageColumn] = value;
         } else {
-          csvData[keyRow][languageColumn] = v;
+          const entry = [];
+          entry[KEY_COLUMN] = translationKey;
+          entry[languageColumn] = value;
+          csvData.push(entry);
         }
       }
     });
@@ -114,14 +108,10 @@ const createCsv = (translationsPath: string, csvPath: string) => {
 };
 
 function fillEmptyCells(csvData: string[][]) {
+  const headerLength = csvData[HEADER_ROW].length;
   return csvData.map((row) => {
-    const length = csvData[0].length;
-    if (row.length < length) {
-      const diff = length - row.length;
-      for (let i = 0; i < diff; i++) {
-        row.push("");
-      }
-    }
+    if (row.length === headerLength) return row;
+    for (let i = 0; i < headerLength - row.length; i++) row.push("");
     return row;
   });
 }
